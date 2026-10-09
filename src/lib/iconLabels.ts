@@ -1,0 +1,36 @@
+// Spoken / tooltip names for the category icon picker (translated with t()).
+
+import { m } from '@/i18n';
+
+export const ICON_LABELS: Record<string, string> = {
+  bell: m('Bell'),
+  shield: m('Shield'),
+  'credit-card': m('Credit card'),
+  'id-card': m('ID card'),
+  tv: m('TV'),
+  receipt: m('Receipt'),
+  landmark: m('Government building'),
+  car: m('Car'),
+  wrench: m('Wrench'),
+  'heart-pulse': m('Heart'),
+  home: m('Home'),
+  zap: m('Electricity'),
+  flame: m('Gas'),
+  wifi: m('Wi-Fi'),
+  smartphone: m('Phone'),
+  cloud: m('Cloud'),
+  laptop: m('Laptop'),
+  music: m('Music'),
+  wallet: m('Wallet'),
+  'file-text': m('Document'),
+  plane: m('Travel'),
+  stethoscope: m('Doctor'),
+  dumbbell: m('Gym'),
+  'graduation-cap': m('Education'),
+  briefcase: m('Work'),
+  'shopping-cart': m('Shopping'),
+  gift: m('Gift'),
+  baby: m('Baby'),
+  cat: m('Pet'),
+  'book-open': m('Book'),
+};

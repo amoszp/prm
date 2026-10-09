@@ -1,0 +1,26 @@
+{
+  "name": "prm-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "PRM - Please Remind Me. Phase 2 backend: Express + node:sqlite API, scheduler and Telegram delivery. Runs straight from TypeScript (tsx) in dev and production — no compile step, no native module.",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,187 @@
+/*
+  Design tokens — "plum & peach".
+  Rose-tinted paper neutrals, plum-black ink, and a two-tone brand: deep plum
+  (#542A52) carries action in light mode, peach (#FFB39A) carries it in dark
+  mode and is the highlight wash in both. Urgency stays vermilion (overdue)
+  and ochre (soon). Fraunces numerals carry dates, countdowns and titles;
+  everything else is set in Plus Jakarta Sans.
+  Every component reads from these tokens — never hard-code a value.
+*/
+
+:root {
+  /* Type */
+  --font-ui: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces Variable', 'Fraunces', ui-serif, Georgia, 'Times New Roman', serif;
+
+  --fs-11: 0.6875rem;
+  --fs-12: 0.75rem;
+  --fs-13: 0.8125rem;
+  --fs-14: 0.875rem;
+  --fs-15: 0.9375rem;
+  --fs-17: 1.0625rem;
+  --fs-20: 1.25rem;
+  --fs-24: 1.5rem;
+  --fs-32: 2rem;
+  --fs-44: 2.75rem;
+  --fs-64: 4rem;
+
+  --fw-regular: 450;
+  --fw-medium: 560;
+  --fw-semibold: 650;
+  --fw-bold: 750;
+  --fw-display: 480;
+
+  /* Brand — fixed in both themes (marks, icons) */
+  --brand-plum: #542a52;
+  --brand-peach: #ffb39a;
+
+  /* Spacing — 4px grid */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* Radii — nested surfaces follow outer = inner + padding */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  /* Control sizes */
+  --h-sm: 32px;
+  --h-md: 40px;
+  --h-lg: 48px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-fast: 120ms;
+  --t-med: 200ms;
+  --t-slow: 320ms;
+
+  --sidebar-w: 248px;
+  --content-max: 1040px;
+
+  /* ---- Light palette ---- */
+  color-scheme: light;
+  --bg: #f7f3f2;
+  --bg-sunk: #efe8e6;
+  --surface: #fffdfc;
+  --surface-2: #faf6f5;
+  --surface-hover: #f4edeb;
+  --line: rgba(84, 42, 82, 0.1);
+  --line-strong: rgba(84, 42, 82, 0.19);
+
+  --ink: #241722;
+  --ink-2: #5a4a56;
+  --ink-3: #72616c;
+  --ink-inverse: #fff8f5;
+
+  --accent: #542a52;
+  --accent-hover: #43203f;
+  --accent-ink: #ffb39a;
+  --accent-soft: rgba(255, 179, 154, 0.34);
+  --accent-line: rgba(84, 42, 82, 0.3);
+
+  --danger: #b4321f;
+  --danger-ink: #ffffff;
+  --danger-soft: rgba(180, 50, 31, 0.09);
+  --warn: #9a5c08;
+  --warn-soft: rgba(176, 108, 13, 0.11);
+  --calm: #4b6b8a;
+  --calm-soft: rgba(75, 107, 138, 0.1);
+
+  --focus: 0 0 0 3px rgba(84, 42, 82, 0.3);
+  --shadow-1: 0 1px 0 rgba(54, 24, 52, 0.04), 0 1px 2px rgba(54, 24, 52, 0.05);
+  --shadow-2: 0 1px 2px rgba(54, 24, 52, 0.05), 0 6px 18px -6px rgba(54, 24, 52, 0.14);
+  --shadow-3: 0 2px 6px rgba(54, 24, 52, 0.06), 0 24px 48px -16px rgba(54, 24, 52, 0.26);
+  --scrim: rgba(30, 14, 28, 0.4);
+  --bar-bg: rgba(247, 243, 242, 0.82);
+
+  /* Category palette (dot / text colour, and a soft wash) */
+  --cat-graphite: #5d5a54;
+  --cat-graphite-soft: rgba(93, 90, 84, 0.12);
+  --cat-terracotta: #b5532f;
+  --cat-terracotta-soft: rgba(181, 83, 47, 0.12);
+  --cat-amber: #9a670b;
+  --cat-amber-soft: rgba(196, 135, 22, 0.14);
+  --cat-olive: #646d22;
+  --cat-olive-soft: rgba(107, 116, 38, 0.13);
+  --cat-bottle: #1e6650;
+  --cat-bottle-soft: rgba(30, 102, 80, 0.12);
+  --cat-teal: #1b6f7c;
+  --cat-teal-soft: rgba(27, 114, 128, 0.12);
+  --cat-cobalt: #2f5ea8;
+  --cat-cobalt-soft: rgba(47, 94, 168, 0.11);
+  --cat-indigo: #4f4aa6;
+  --cat-indigo-soft: rgba(79, 74, 166, 0.11);
+  --cat-plum: #8a3f7a;
+  --cat-plum-soft: rgba(138, 63, 122, 0.11);
+  --cat-rose: #b23a55;
+  --cat-rose-soft: rgba(178, 58, 85, 0.11);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #161015;
+  --bg-sunk: #110c10;
+  --surface: #1f181e;
+  --surface-2: #251d24;
+  --surface-hover: #2b222a;
+  --line: rgba(255, 222, 232, 0.08);
+  --line-strong: rgba(255, 222, 232, 0.15);
+
+  --ink: #f6edef;
+  --ink-2: #c4b5be;
+  --ink-3: #968690;
+  --ink-inverse: #161015;
+
+  --accent: #ffb39a;
+  --accent-hover: #ffc6b2;
+  --accent-ink: #542a52;
+  --accent-soft: rgba(255, 179, 154, 0.13);
+  --accent-line: rgba(255, 179, 154, 0.36);
+
+  /* Raspberry, not coral — keeps "overdue" distinct from the peach accent. */
+  --danger: #ff6f7d;
+  --danger-ink: #2a0a10;
+  --danger-soft: rgba(255, 111, 125, 0.13);
+  --warn: #e8b25a;
+  --warn-soft: rgba(232, 178, 90, 0.13);
+  --calm: #8fb0d0;
+  --calm-soft: rgba(143, 176, 208, 0.12);
+
+  --focus: 0 0 0 3px rgba(255, 179, 154, 0.34);
+  --shadow-1: 0 1px 0 rgba(0, 0, 0, 0.25);
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px -8px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 2px 8px rgba(0, 0, 0, 0.35), 0 28px 56px -18px rgba(0, 0, 0, 0.7);
+  --scrim: rgba(0, 0, 0, 0.55);
+  --bar-bg: rgba(22, 16, 21, 0.8);
+
+  --cat-graphite: #b3aea4;
+  --cat-graphite-soft: rgba(179, 174, 164, 0.13);
+  --cat-terracotta: #e89272;
+  --cat-terracotta-soft: rgba(232, 146, 114, 0.14);
+  --cat-amber: #e5b65e;
+  --cat-amber-soft: rgba(229, 182, 94, 0.14);
+  --cat-olive: #b7c06a;
+  --cat-olive-soft: rgba(183, 192, 106, 0.13);
+  --cat-bottle: #63c3a0;
+  --cat-bottle-soft: rgba(99, 195, 160, 0.13);
+  --cat-teal: #62c0cc;
+  --cat-teal-soft: rgba(98, 192, 204, 0.13);
+  --cat-cobalt: #86a9e6;
+  --cat-cobalt-soft: rgba(134, 169, 230, 0.14);
+  --cat-indigo: #a29ef0;
+  --cat-indigo-soft: rgba(162, 158, 240, 0.14);
+  --cat-plum: #d891c8;
+  --cat-plum-soft: rgba(216, 145, 200, 0.14);
+  --cat-rose: #ef8ba1;
+  --cat-rose-soft: rgba(239, 139, 161, 0.14);
+}

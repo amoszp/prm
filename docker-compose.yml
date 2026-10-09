@@ -1,0 +1,20 @@
+# PRM - Please Remind Me
+# Phase 2: one container serving the API + the built PWA (mirrors Kage).
+# Usage: docker compose up -d --build
+# NAS-agnostic on purpose — no host-specific paths baked in here; point the
+# ./data volume at wherever the target NAS keeps persistent app data.
+
+services:
+  prm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prm
+    restart: unless-stopped
+    ports:
+      - "${PORT:-4478}:4478"
+    env_file:
+      - ./backend/.env
+    volumes:
+      # Host-side folder that keeps the SQLite database across rebuilds/restarts.
+      - ./data:/app/backend/data

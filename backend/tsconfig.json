@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      // Mirrors the frontend's own '@/*' -> 'src/*' alias (see ../tsconfig.app.json)
+      // so files imported straight from the frontend (src/lib/reminders.ts,
+      // src/lib/dates.ts) resolve their own internal '@/...' imports correctly
+      // when run from here, via tsx, with no path-rewriting build step.
+      "@/*": ["../src/*"]
+    }
+  },
+  "include": ["src"]
+}
