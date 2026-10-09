@@ -12,7 +12,7 @@ services:
     container_name: prm
     restart: unless-stopped
     ports:
-      - "${PORT:-4478}:4478"
+      - "${PORT:-1105}:4478"
     env_file:
       - ./backend/.env
     volumes:
