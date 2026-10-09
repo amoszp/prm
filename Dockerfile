@@ -22,8 +22,11 @@ WORKDIR /app
 COPY backend/package.json backend/package-lock.json* ./backend/
 RUN npm --prefix backend install --omit=dev
 
-# Backend source.
+# Backend source. tsconfig.json must ship too — it's what makes tsx resolve
+# the frontend's '@/...' alias (e.g. src/lib/dates.ts importing '@/i18n') at
+# runtime; without it the container crash-loops on "Cannot find module '@/...'".
 COPY backend/src ./backend/src
+COPY backend/tsconfig.json ./backend/tsconfig.json
 
 # Frontend source: backend/src/scheduler.ts and importRoute.ts import
 # nextAlert()/settleAutoCharges()/types straight from here at runtime, so
