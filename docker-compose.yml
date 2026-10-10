@@ -1,14 +1,13 @@
 # PRM - Please Remind Me
 # Phase 2: one container serving the API + the built PWA (mirrors Kage).
-# Usage: docker compose up -d --build
+# Image is built by .github/workflows/deploy.yml and pulled from GHCR.
+# Usage: docker compose pull && docker compose up -d
 # NAS-agnostic on purpose — no host-specific paths baked in here; point the
 # ./data volume at wherever the target NAS keeps persistent app data.
 
 services:
   prm:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-amoszp}/prm:${PRM_TAG:-latest}
     container_name: prm
     restart: unless-stopped
     ports:
