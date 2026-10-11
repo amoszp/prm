@@ -4,15 +4,12 @@ Bills, renewals, subscriptions and expiry dates in one place, with alerts
 before they hit: car insurance, bank-card expiry, DNI renewal, YouTube / iCloud
 charges, utilities, taxes, ITV, home maintenance — and anything else you add.
 
-Remodelled from `AI-BUSINESS/prm` to match the vault note *Bill and Renewal
-Reminder App*. The original project is untouched.
-
 ## Status: phase 1 (on-device)
 
 | Phase | What | State |
 |------|------|------|
 | 1 | Installable PWA, all data in the browser (IndexedDB), local notifications while the app is open | **This build** |
-| 2 | Small API on Chiquitojaco (SQLite) replacing IndexedDB | Planned |
+| 2 | Small self-hosted API (SQLite) replacing IndexedDB | Planned |
 | 2 | Daily job that sends due alerts through a Telegram bot (works with the phone locked, no App Store) | Planned |
 
 Phase 1 is for testing the product. Its one real limit: a browser can only fire
