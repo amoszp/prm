@@ -1,5 +1,5 @@
 # PRM - Please Remind Me
-# Phase 2: one container serving the API + the built PWA (mirrors Kage).
+# One container serving the API + the built PWA (mirrors Kage).
 # Image is built by .github/workflows/deploy.yml and pulled from GHCR.
 # Usage: docker compose pull && docker compose up -d
 # NAS-agnostic on purpose — no host-specific paths baked in here; point the
@@ -17,3 +17,11 @@ services:
     volumes:
       # Host-side folder that keeps the SQLite database across rebuilds/restarts.
       - ./data:/app/backend/data
+    networks:
+      - default
+      - accounts
+
+networks:
+  accounts:
+    # Created by the accounts service's compose file.
+    external: true

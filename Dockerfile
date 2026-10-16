@@ -1,5 +1,5 @@
 # PRM - Please Remind Me
-# Phase 2: multi-stage build producing one container that serves the API and
+# Multi-stage build producing one container that serves the API and
 # the built PWA together (mirrors Kage's packaging). The backend runs
 # straight from TypeScript via tsx — no native module to compile — and
 # imports the frontend's own due-date logic (src/lib) at runtime, so the
@@ -12,6 +12,10 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 COPY . .
+# The image always runs with its own server: the app signs in through the
+# shared accounts service and keeps each user's data on the server.
+ARG VITE_STORAGE_MODE=http
+ENV VITE_STORAGE_MODE=$VITE_STORAGE_MODE
 RUN npm run build
 
 # ---- Stage 2: runtime ----

@@ -4,16 +4,41 @@ Bills, renewals, subscriptions and expiry dates in one place, with alerts
 before they hit: car insurance, bank-card expiry, DNI renewal, YouTube / iCloud
 charges, utilities, taxes, ITV, home maintenance — and anything else you add.
 
-## Status: phase 1 (on-device)
+## Status
 
 | Phase | What | State |
 |------|------|------|
-| 1 | Installable PWA, all data in the browser (IndexedDB), local notifications while the app is open | **This build** |
-| 2 | Small self-hosted API (SQLite) replacing IndexedDB | Planned |
-| 2 | Daily job that sends due alerts through a Telegram bot (works with the phone locked, no App Store) | Planned |
+| 1 | Installable PWA, all data in the browser (IndexedDB), local notifications while the app is open | Done — still what a build without a server runs |
+| 2 | Self-hosted API (Express + SQLite) replacing IndexedDB, one account per person | Done — the Docker image runs it |
+| 2 | Scheduler that sends due alerts through a Telegram bot (works with the phone locked, no App Store) | Done — each account's alerts go to its own chat |
 
-Phase 1 is for testing the product. Its one real limit: a browser can only fire
-alerts while PRM is open. Phase 2 removes that.
+## Accounts and the server (Docker image)
+
+The image is built with `VITE_STORAGE_MODE=http`, so the app talks to the
+backend in the same container instead of IndexedDB:
+
+- A sign-in screen sits in front of the app (sign in, or create an account).
+  Accounts live in a separate shared accounts service reached over a private
+  Docker network (`ACCOUNTS_URL`, `ACCOUNTS_SERVICE_TOKEN`); PRM stores no
+  passwords. The session is an HttpOnly cookie; API keys work as
+  `Authorization: Bearer <key>`.
+- Every record belongs to one account; nobody sees anyone else's data. The
+  scheduler sends each account's alerts to the Telegram chat set for that
+  account in the accounts service (`TELEGRAM_CHAT_ID` is used for
+  `LEGACY_OWNER_USERNAME`).
+- The first time anyone signs in on a device that already used PRM on-device,
+  that device's data is sent to the server in the JSON backup format
+  (`POST /api/import-device`) and lands only in an account that is still empty.
+  The IndexedDB copy stays on the device as a backup.
+- Attachments (photos, PDFs) stay on the device where they were added, as in
+  phase 1.
+- Records saved on the server before accounts existed move to
+  `LEGACY_OWNER_USERNAME` (an admin) on that account's first sign-in.
+- The app reads from the server, so it needs a connection; reopening it shows
+  changes made on other devices.
+
+Server settings go in `backend/.env` (see `backend/.env.example`). Backend
+tests: `cd backend && npm test`.
 
 ## Everything is editable (full CRUD)
 
@@ -70,8 +95,9 @@ src/
 ```
 
 The app only talks to the `Collection<T>` interface in `src/data/collection.ts`.
-Phase 2 adds an HTTP adapter with the same interface; stores and pages don't
-change. The JSON backup format is the migration path to the server.
+The IndexedDB adapter and the HTTP adapter (`src/data/httpCollection.ts`,
+selected by `VITE_STORAGE_MODE=http`) share that interface; stores and pages
+don't change. The JSON backup format is the migration path to the server.
 
 ## Design
 

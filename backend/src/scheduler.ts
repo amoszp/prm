@@ -9,13 +9,25 @@
 // about when an alert should fire (the exact bug class found and fixed in
 // Kage: an alert drifting from its event after a date edit).
 import { randomUUID } from 'node:crypto';
-import { listRecords, markAlertSent, putRecord, wasAlertSent } from './db';
+import { AccountsUnavailable, getUserDetails } from './auth';
+import { listRecords, listUserIds, markAlertSent, putRecord, wasAlertSent } from './db';
 import { sendTelegramMessage } from './telegram';
 import { isOpen, nextAlert, settleAutoCharges } from '../../src/lib/reminders';
 import { daysFromToday } from '../../src/lib/dates';
 import type { Category, Person, Reminder } from '../../src/types';
 
 const POLL_SECONDS = Number(process.env.SCHEDULER_INTERVAL_SECONDS ?? 60);
+const LEGACY_OWNER = (process.env.LEGACY_OWNER_USERNAME ?? '').trim().toLowerCase();
+const DEFAULT_CHAT_ID = process.env.TELEGRAM_CHAT_ID || null;
+
+// Each account's alerts go to its own Telegram chat (set in the accounts
+// service). The chat in the env file is kept for the original user.
+async function chatFor(userId: number): Promise<string | null> {
+  const user = await getUserDetails(userId);
+  if (!user || user.disabled) return null;
+  if (user.telegramChatId) return user.telegramChatId;
+  return user.username === LEGACY_OWNER ? DEFAULT_CHAT_ID : null;
+}
 
 // Same visual language as Kage's Telegram notifications (see its vault note,
 // "Telegram notification format"), extended with the extra fields PRM's
@@ -111,11 +123,22 @@ export function shouldNag(r: Reminder, now: Date): boolean {
   return now >= today9am;
 }
 
-async function runAlertSweep(): Promise<void> {
+async function runAlertSweep(userId: number): Promise<void> {
   const now = new Date();
-  const reminders = listRecords<Reminder>('reminders');
-  const categories = new Map(listRecords<Category>('categories').map((c) => [c.id, c]));
-  const people = new Map(listRecords<Person>('people').map((p) => [p.id, p]));
+  const reminders = listRecords<Reminder>(userId, 'reminders');
+  const categories = new Map(listRecords<Category>(userId, 'categories').map((c) => [c.id, c]));
+  const people = new Map(listRecords<Person>(userId, 'people').map((p) => [p.id, p]));
+  // Looked up once something is due; an account without a chat skips its alerts.
+  let chat: string | null | undefined;
+  const send = async (text: string): Promise<boolean> => {
+    if (chat === undefined) chat = await chatFor(userId);
+    if (!chat) {
+      console.warn(`[scheduler] no Telegram chat for user ${userId}, alert skipped`);
+      return true; // marked as handled, so it isn't retried every minute
+    }
+    await sendTelegramMessage(text, chat);
+    return true;
+  };
 
   for (const r of reminders) {
     const category = categories.get(r.categoryId);
@@ -125,14 +148,14 @@ async function runAlertSweep(): Promise<void> {
       const key = moment.toISOString();
       if (wasAlertSent(r.id, key)) continue;
       const next = nextAlert(r, moment);
-      await sendTelegramMessage(buildDueMessage(r, category, person, next));
+      await send(buildDueMessage(r, category, person, next));
       markAlertSent(r.id, key);
     }
 
     if (shouldNag(r, now)) {
       const key = nagKey(now);
       if (!wasAlertSent(r.id, key)) {
-        await sendTelegramMessage(buildNagMessage(r, now));
+        await send(buildNagMessage(r, now));
         markAlertSent(r.id, key);
       }
     }
@@ -142,20 +165,24 @@ async function runAlertSweep(): Promise<void> {
 /** Mirrors the frontend's own effect (DataStore.tsx): auto-charged reminders
  * whose due date has passed complete themselves, so they keep rolling
  * forward even between app opens — same behavior, run server-side too. */
-async function runSettlement(): Promise<void> {
+async function runSettlement(userId: number): Promise<void> {
   const now = new Date();
-  const reminders = listRecords<Reminder>('reminders');
+  const reminders = listRecords<Reminder>(userId, 'reminders');
   const changed = settleAutoCharges(reminders, now, () => randomUUID(), now.toISOString());
-  for (const r of changed) putRecord('reminders', r);
+  for (const r of changed) putRecord(userId, 'reminders', r);
 }
 
 export function startScheduler(): void {
   const tick = async () => {
-    try {
-      await runSettlement();
-      await runAlertSweep();
-    } catch (err) {
-      console.error('[scheduler] tick failed:', err);
+    for (const userId of listUserIds()) {
+      try {
+        await runSettlement(userId);
+        await runAlertSweep(userId);
+      } catch (err) {
+        // Accounts service down: alerts stay unsent and go out on a later tick.
+        if (err instanceof AccountsUnavailable) console.warn('[scheduler] accounts service unavailable, retrying later');
+        else console.error(`[scheduler] tick failed for user ${userId}:`, err);
+      }
     }
   };
   void tick();

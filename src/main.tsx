@@ -7,6 +7,8 @@ import App from './App';
 import { DataStoreProvider } from '@/stores/DataStore';
 import { SettingsStoreProvider } from '@/stores/SettingsStore';
 import { ToastProvider } from '@/components/Toast';
+import { AccountGate } from '@/components/AccountGate';
+import { SERVER_MODE } from '@/lib/server';
 import '@/styles/tokens.css';
 import '@/styles/app.css';
 
@@ -18,9 +20,20 @@ createRoot(rootEl).render(
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <SettingsStoreProvider>
         <ToastProvider>
-          <DataStoreProvider>
-            <App />
-          </DataStoreProvider>
+          {SERVER_MODE ? (
+            // One data store per account: signing in as someone else starts fresh.
+            <AccountGate>
+              {(user) => (
+                <DataStoreProvider key={user.id}>
+                  <App />
+                </DataStoreProvider>
+              )}
+            </AccountGate>
+          ) : (
+            <DataStoreProvider>
+              <App />
+            </DataStoreProvider>
+          )}
         </ToastProvider>
       </SettingsStoreProvider>
     </BrowserRouter>

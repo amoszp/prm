@@ -2582,3 +2582,50 @@ a.settings-row:hover {
   border-radius: var(--r-md);
   background: var(--bg-sunk);
 }
+
+/* ---- Sign-in (server mode) ---- */
+.auth-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(var(--s-6), env(safe-area-inset-top)) var(--s-5) max(var(--s-6), env(safe-area-inset-bottom));
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.auth-mark {
+  width: 56px;
+  height: 56px;
+  align-self: center;
+}
+
+.auth-title {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: var(--fw-display);
+  font-size: var(--fs-24);
+  color: var(--ink);
+}
+
+.auth-sub {
+  margin: calc(-1 * var(--s-3)) 0 var(--s-1);
+  text-align: center;
+  font-size: var(--fs-14);
+  color: var(--ink-3);
+}
+
+.auth-error {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--fs-14);
+}

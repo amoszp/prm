@@ -38,10 +38,12 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         // Bump cache limit for hashed assets so large app chunks stay precached.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            // Cache same-origin GET requests (app shell + assets).
-            urlPattern: ({ sameOrigin }) => sameOrigin,
+            // Cache same-origin GET requests (app shell + assets). Never the
+            // API: its answers depend on who is signed in and must be fresh.
+            urlPattern: ({ sameOrigin, url }) => sameOrigin && !url.pathname.startsWith('/api/'),
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'prm-app-shell',

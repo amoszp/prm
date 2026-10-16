@@ -9,6 +9,7 @@ import {
   LayoutTemplate,
   Info,
   ListRestart,
+  LogOut,
   Repeat,
   Sparkles,
   Tags,
@@ -28,6 +29,8 @@ import { badgeSupported, notificationsSupported, showNotification } from '@/lib/
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { useToast } from '@/components/Toast';
+import { useAccount } from '@/components/AccountGate';
+import { SERVER_MODE } from '@/lib/server';
 import { Button, Segmented, Select, Switch } from '@/components/ui';
 import type { BackupFile, ThemeMode } from '@/types';
 import { LANGS, t, tn, type Lang } from '@/i18n';
@@ -74,6 +77,7 @@ function LinkRow({ to, icon, label, count }: { to: string; icon: ReactNode; labe
 
 export function SettingsPage() {
   const data = useData();
+  const account = useAccount();
   const { settings, setTheme, updateSettings, replaceSettings } = useSettings();
   const { toast } = useToast();
   const exportCalendar = useCalendarExport();
@@ -198,9 +202,11 @@ export function SettingsPage() {
           <div className="notice" style={{ width: '100%' }}>
             <Info size={16} />
             <span>
-              {t(
-                'Phase 1 keeps everything on this device, so alerts can only fire while the app is open. Phase 2 moves your data to Chiquitojaco and sends alerts through Telegram, even with your phone locked.',
-              )}
+              {SERVER_MODE
+                ? t('Your reminders are kept on your server, which sends each alert through Telegram, even with your phone locked or the app closed.')
+                : t(
+                    'Phase 1 keeps everything on this device, so alerts can only fire while the app is open. Phase 2 moves your data to Chiquitojaco and sends alerts through Telegram, even with your phone locked.',
+                  )}
             </span>
           </div>
         </div>
@@ -239,8 +245,21 @@ export function SettingsPage() {
         <LinkRow to="/providers" icon={<Users size={16} />} label={t('Providers')} count={data.providers.length} />
       </Group>
 
+      {account ? (
+        <Group title={t('Account')}>
+          <Row label={t('Signed in as {name}', { name: account.user.displayName || account.user.username })} desc={t('Your data is on your server and the same on every device you sign in on. Attachments stay on the device where you added them.')}>
+            <Button size="sm" icon={<LogOut size={14} />} onClick={account.signOut}>
+              {t('Sign out')}
+            </Button>
+          </Row>
+        </Group>
+      ) : null}
+
       <Group title={t('Data')}>
-        <Row label={t('Export backup')} desc={t('Everything, as one JSON file. Also how you’ll move to the server later.')}>
+        <Row
+          label={t('Export backup')}
+          desc={SERVER_MODE ? t('Everything, as one JSON file.') : t('Everything, as one JSON file. Also how you’ll move to the server later.')}
+        >
           <Button
             size="sm"
             icon={<Download size={14} />}
@@ -252,7 +271,10 @@ export function SettingsPage() {
             {t('Export')}
           </Button>
         </Row>
-        <Row label={t('Import backup')} desc={t('Replaces what’s on this device with the file’s contents.')}>
+        <Row
+          label={t('Import backup')}
+          desc={SERVER_MODE ? t('Replaces what’s in your account with the file’s contents.') : t('Replaces what’s on this device with the file’s contents.')}
+        >
           <>
             <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => void onFile(e.target.files?.[0])} />
             <Button size="sm" icon={<Upload size={14} />} onClick={() => fileRef.current?.click()}>

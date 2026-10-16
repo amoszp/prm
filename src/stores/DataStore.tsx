@@ -282,7 +282,14 @@ export function DataStoreProvider({ children, collections: injected }: { childre
     (async () => {
       try {
         const meta = new Set((await collections.meta.list()).map((m) => m.id));
-        if (!meta.has('seeded')) {
+        if (SYNCED_VIA_HTTP && !injected) {
+          // The account decides, not the device: a fresh account gets the
+          // default lists once, whichever device it first signs in on.
+          if ((await collections.categories.list()).length === 0) {
+            const lists = seedLists(nowISO());
+            for (const k of ORDERED) await (collections[k] as Collection<Entity>).putMany(lists[k]);
+          }
+        } else if (!meta.has('seeded')) {
           const lists = seedLists(nowISO());
           for (const k of ORDERED) await (collections[k] as Collection<Entity>).putMany(lists[k]);
           await collections.meta.put({ id: 'seeded', value: nowISO() });
@@ -294,7 +301,9 @@ export function DataStoreProvider({ children, collections: injected }: { childre
         }
         const loaded = await Promise.all(KINDS.map((k) => collections[k].list()));
         const next = Object.fromEntries(KINDS.map((k, i) => [k, loaded[i]])) as unknown as DataState;
-        const files = await purgeOrphans(next.reminders);
+        // With the server, this device's attachments may belong to reminders of
+        // another account that signed in here before: never purge them then.
+        const files = SYNCED_VIA_HTTP && !injected ? await collections.attachments.list() : await purgeOrphans(next.reminders);
         if (!alive) return;
         setData(normalise(next));
         setAttachments(files);
@@ -307,7 +316,23 @@ export function DataStoreProvider({ children, collections: injected }: { childre
     return () => {
       alive = false;
     };
-  }, [collections, purgeOrphans]);
+  }, [collections, purgeOrphans, injected]);
+
+  // With the server, reopening the app shows changes made on other devices.
+  useEffect(() => {
+    if (!SYNCED_VIA_HTTP || injected) return;
+    const reload = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const loaded = await Promise.all(KINDS.map((k) => collections[k].list()));
+        setData(normalise(Object.fromEntries(KINDS.map((k, i) => [k, loaded[i]])) as unknown as DataState));
+      } catch {
+        /* offline: keep what's on screen */
+      }
+    };
+    document.addEventListener('visibilitychange', reload);
+    return () => document.removeEventListener('visibilitychange', reload);
+  }, [collections, injected]);
 
   // ---- minute tick + persist expired snoozes --------------------------------
   useEffect(() => {

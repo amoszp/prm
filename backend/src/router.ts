@@ -1,6 +1,7 @@
 // One generic REST router backs all eight entity stores, matching the
 // frontend's Collection<T> contract exactly (list/get/put/putMany/remove/clear)
-// instead of a bespoke route per entity:
+// instead of a bespoke route per entity. Every route works on the signed-in
+// user's own records (requireUser runs before this router):
 //   GET    /:store          -> list()
 //   GET    /:store/:id      -> get(id)
 //   PUT    /:store/:id      -> put(item)
@@ -27,16 +28,18 @@ function storeOf(req: Request): StoreName {
   return req.params.store as StoreName;
 }
 
+const userOf = (req: Request): number => req.user!.id;
+
 function hasId(value: unknown): value is { id: string } {
   return !!value && typeof value === 'object' && typeof (value as { id?: unknown }).id === 'string';
 }
 
 router.get('/:store', (req: Request, res: Response) => {
-  res.json(listRecords(storeOf(req)));
+  res.json(listRecords(userOf(req), storeOf(req)));
 });
 
 router.get('/:store/:id', (req: Request, res: Response) => {
-  const item = getRecord(storeOf(req), req.params.id);
+  const item = getRecord(userOf(req), storeOf(req), req.params.id);
   if (!item) {
     res.status(404).json({ error: 'not found' });
     return;
@@ -54,7 +57,7 @@ router.put('/:store/:id', (req: Request, res: Response) => {
     res.status(400).json({ error: 'body id does not match the URL id' });
     return;
   }
-  res.json(putRecord(storeOf(req), body));
+  res.json(putRecord(userOf(req), storeOf(req), body));
 });
 
 router.post('/:store/bulk', (req: Request, res: Response) => {
@@ -63,16 +66,16 @@ router.post('/:store/bulk', (req: Request, res: Response) => {
     res.status(400).json({ error: 'body must be an array of objects, each with an "id" field' });
     return;
   }
-  putManyRecords(storeOf(req), items);
+  putManyRecords(userOf(req), storeOf(req), items);
   res.status(204).send();
 });
 
 router.delete('/:store/:id', (req: Request, res: Response) => {
-  removeRecord(storeOf(req), req.params.id);
+  removeRecord(userOf(req), storeOf(req), req.params.id);
   res.status(204).send();
 });
 
 router.delete('/:store', (req: Request, res: Response) => {
-  clearStore(storeOf(req));
+  clearStore(userOf(req), storeOf(req));
   res.status(204).send();
 });

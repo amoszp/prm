@@ -10,6 +10,7 @@ import { BrandMark } from './BrandMark';
 import { useToast } from './Toast';
 import { Button, Segmented } from './ui';
 import { m, t } from '@/i18n';
+import { SERVER_MODE } from '@/lib/server';
 
 const NAV = [
   { to: '/', label: m('Overview'), icon: LayoutGrid, end: true },
@@ -79,7 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ]}
           />
           <p className="phase-note">
-            <Bell size={12} style={{ verticalAlign: '-1px' }} /> {t('Stored on this device. Server sync & Telegram alerts come in phase 2.')}
+            <Bell size={12} style={{ verticalAlign: '-1px' }} /> {SERVER_MODE ? t('Saved on your server. Alerts arrive through Telegram.') : t('Stored on this device. Server sync & Telegram alerts come in phase 2.')}
           </p>
         </div>
       </aside>

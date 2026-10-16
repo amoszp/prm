@@ -5,14 +5,18 @@
 
 import { STORE_NAMES, type Collection, type Entity, type StoreName } from './collection';
 import { t } from '@/i18n';
+import { signalSignedOut } from '@/lib/server';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 async function request<R>(path: string, init?: RequestInit): Promise<R> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
+    credentials: 'same-origin',
+    cache: 'no-store',
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   });
+  if (res.status === 401) signalSignedOut();
   if (!res.ok) {
     throw new Error(t('Server request failed ({status}).', { status: res.status }));
   }
@@ -27,8 +31,9 @@ export function httpCollection<T extends Entity>(store: StoreName): Collection<T
   return {
     list: () => request<T[]>(`/${store}`),
     get: async (id) => {
-      const res = await fetch(`${API_BASE}/${store}/${encodeURIComponent(id)}`);
+      const res = await fetch(`${API_BASE}/${store}/${encodeURIComponent(id)}`, { credentials: 'same-origin', cache: 'no-store' });
       if (res.status === 404) return undefined;
+      if (res.status === 401) signalSignedOut();
       if (!res.ok) throw new Error(t('Server request failed ({status}).', { status: res.status }));
       return (await res.json()) as T;
     },
