@@ -10,11 +10,28 @@
 // Kage: an alert drifting from its event after a date edit).
 import { randomUUID } from 'node:crypto';
 import { AccountsUnavailable, getUserDetails } from './auth';
-import { listRecords, listUserIds, markAlertSent, putRecord, wasAlertSent } from './db';
-import { sendTelegramMessage } from './telegram';
-import { isOpen, nextAlert, settleAutoCharges } from '../../src/lib/reminders';
+import {
+  addExtraAlert,
+  dueExtraAlerts,
+  getRecord,
+  listRecords,
+  listUserIds,
+  markAlertSent,
+  markExtraAlertSent,
+  putRecord,
+  wasAlertSent,
+} from './db';
+import {
+  answerCallback,
+  editTelegramMessage,
+  sendTelegramMessage,
+  startTelegramPolling,
+  type CallbackQuery,
+  type InlineButton,
+} from './telegram';
+import { completeCycle, isOpen, nextAlert, settleAutoCharges } from '../../src/lib/reminders';
 import { daysFromToday } from '../../src/lib/dates';
-import type { Category, Person, Reminder } from '../../src/types';
+import type { Reminder } from '../../src/types';
 
 const POLL_SECONDS = Number(process.env.SCHEDULER_INTERVAL_SECONDS ?? 60);
 const LEGACY_OWNER = (process.env.LEGACY_OWNER_USERNAME ?? '').trim().toLowerCase();
@@ -29,53 +46,80 @@ async function chatFor(userId: number): Promise<string | null> {
   return user.username === LEGACY_OWNER ? DEFAULT_CHAT_ID : null;
 }
 
-// Same visual language as Kage's Telegram notifications (see its vault note,
-// "Telegram notification format"), extended with the extra fields PRM's
-// richer data model has that Kage doesn't (category, amount, person).
-const MONTHS_ES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+// Same format as Kage's Telegram alerts: only the event (title, date, time),
+// plus the amount when the reminder has one.
+const MONTHS_EN = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-function formatDateEs(iso: string): string {
-  const [, month, day] = iso.split('-').map(Number);
-  return `${day} de ${MONTHS_ES[month - 1]}`;
+function formatDate(iso: string, withYear = false): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  return `${day} ${MONTHS_EN[month - 1]}${withYear ? ` ${year}` : ''}`;
 }
 
-function formatMomentEs(d: Date): { date: string; time: string } {
-  const date = `${d.getDate()} de ${MONTHS_ES[d.getMonth()]}`;
-  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  return { date, time };
+function hhmm(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function buildDueMessage(
-  r: Reminder,
-  category: Category | undefined,
-  person: Person | undefined,
-  next: Date | null
-): string {
-  const lines = ['💥Chacho espabila:', '', `✨${r.title}`, `📅${formatDateEs(r.dueDate)}`];
+export function buildDueMessage(r: Reminder): string {
+  const lines = [`✨${r.title}`, `📅${formatDate(r.dueDate)}`];
   if (r.dueTime) lines.push(`🕰️${r.dueTime}`);
-  if (category) lines.push(`🏷️${category.name}`);
-  if (r.amount != null) lines.push(`💶${r.amount.toFixed(2)} ${r.currency ?? 'EUR'}`);
-  if (person) lines.push(`🙋${person.name}`);
-  if (next) {
-    const n = formatMomentEs(next);
-    lines.push('', '🟩 Siguiente Aviso:', `📅${n.date}`, `🕰️${n.time}`);
+  if (r.amount != null) {
+    const currency = r.currency ?? 'EUR';
+    lines.push(`💶${r.amount.toFixed(2)} ${currency === 'EUR' ? '€' : currency}`);
   }
   return lines.join('\n');
 }
 
-function buildNagMessage(r: Reminder, now: Date): string {
+export function buildNagMessage(r: Reminder, now: Date): string {
   const days = Math.max(0, -daysFromToday(r.dueDate, now));
-  const lines = [
-    '🔁Chacho, esto sigue pendiente:',
-    '',
-    `✨${r.title}`,
-    `📅${formatDateEs(r.dueDate)}`,
-    `⏳Vencido hace ${days} día${days === 1 ? '' : 's'}`,
-  ];
-  return lines.join('\n');
+  return [`✨${r.title}`, `📅${formatDate(r.dueDate)}`, `⏳Overdue by ${days} day${days === 1 ? '' : 's'}`].join('\n');
+}
+
+const completeButton = (userId: number, r: Reminder): InlineButton => ({
+  text: '✅ Completed',
+  callback_data: `done:${userId}:${r.id}`,
+});
+export const dueButtons = (userId: number, r: Reminder): InlineButton[] => [
+  completeButton(userId, r),
+  { text: '🔁 Remind me tomorrow', callback_data: `tomorrow:${userId}:${r.id}` },
+];
+export const nagButtons = (userId: number, r: Reminder): InlineButton[] => [completeButton(userId, r)];
+
+/**
+ * A tap on an alert's button. ✅ completes the cycle exactly as the app does
+ * (a repeating reminder moves to its next date); 🔁 queues one extra alert
+ * for the same time tomorrow. Only the account's own chat can act on it.
+ */
+export async function handleTap(q: CallbackQuery): Promise<void> {
+  const match = /^(done|tomorrow):(\d+):([\w-]+)$/.exec(q.data ?? '');
+  const msg = q.message;
+  if (!match || !msg) return answerCallback(q.id);
+  const userId = Number(match[2]);
+  const r = getRecord<Reminder>(userId, 'reminders', match[3]);
+  if (!r || String(msg.chat.id) !== (await chatFor(userId))) {
+    return answerCallback(q.id, 'This reminder no longer exists.');
+  }
+  const original = msg.text ?? buildDueMessage(r);
+  if (match[1] === 'done') {
+    let note = '✅ Completed';
+    if (r.status !== 'done') {
+      const now = new Date().toISOString();
+      const next = completeCycle(r, `h_${randomUUID()}`, now);
+      putRecord(userId, 'reminders', next);
+      if (r.repeat) note += ` · next: ${formatDate(next.dueDate, true)}`;
+    }
+    await editTelegramMessage(msg.chat.id, msg.message_id, `${original}\n\n${note}`);
+    return answerCallback(q.id, 'Completed');
+  }
+  // Same clock time as this alert went out, one day later.
+  const fireAt = new Date(msg.date * 1000);
+  fireAt.setSeconds(0, 0);
+  fireAt.setDate(fireAt.getDate() + 1);
+  addExtraAlert(userId, r.id, fireAt.toISOString());
+  await editTelegramMessage(msg.chat.id, msg.message_id, `${original}\n\n🔁 I'll remind you tomorrow at ${hhmm(fireAt)}`);
+  return answerCallback(q.id, `Tomorrow at ${hhmm(fireAt)}`);
 }
 // Bounded by the number of alerts a single reminder can carry (due-date
 // alerts + notice-period alerts); a reminder realistically never exceeds
@@ -126,39 +170,43 @@ export function shouldNag(r: Reminder, now: Date): boolean {
 async function runAlertSweep(userId: number): Promise<void> {
   const now = new Date();
   const reminders = listRecords<Reminder>(userId, 'reminders');
-  const categories = new Map(listRecords<Category>(userId, 'categories').map((c) => [c.id, c]));
-  const people = new Map(listRecords<Person>(userId, 'people').map((p) => [p.id, p]));
   // Looked up once something is due; an account without a chat skips its alerts.
   let chat: string | null | undefined;
-  const send = async (text: string): Promise<boolean> => {
+  const send = async (text: string, buttons?: InlineButton[]): Promise<boolean> => {
     if (chat === undefined) chat = await chatFor(userId);
     if (!chat) {
       console.warn(`[scheduler] no Telegram chat for user ${userId}, alert skipped`);
       return true; // marked as handled, so it isn't retried every minute
     }
-    await sendTelegramMessage(text, chat);
+    await sendTelegramMessage(text, chat, buttons);
     return true;
   };
+  // Auto-charged reminders settle themselves, so there's nothing to tap.
+  const buttonsFor = (r: Reminder, make: typeof dueButtons) => (r.autoPay ? undefined : make(userId, r));
 
   for (const r of reminders) {
-    const category = categories.get(r.categoryId);
-    const person = r.personId ? people.get(r.personId) : undefined;
-
     for (const moment of collectDueAlerts(r, now)) {
       const key = moment.toISOString();
       if (wasAlertSent(r.id, key)) continue;
-      const next = nextAlert(r, moment);
-      await send(buildDueMessage(r, category, person, next));
+      await send(buildDueMessage(r), buttonsFor(r, dueButtons));
       markAlertSent(r.id, key);
     }
 
     if (shouldNag(r, now)) {
       const key = nagKey(now);
       if (!wasAlertSent(r.id, key)) {
-        await send(buildNagMessage(r, now));
+        await send(buildNagMessage(r, now), buttonsFor(r, nagButtons));
         markAlertSent(r.id, key);
       }
     }
+  }
+
+  const byId = new Map(reminders.map((r) => [r.id, r]));
+  for (const extra of dueExtraAlerts(userId, now.toISOString())) {
+    const r = byId.get(extra.reminderId);
+    // Done or deleted since the tap: nothing left to remind about.
+    if (r && isOpen(r, now)) await send(buildDueMessage(r), buttonsFor(r, dueButtons));
+    markExtraAlertSent(userId, extra.reminderId, extra.fireAt);
   }
 }
 
@@ -188,4 +236,5 @@ export function startScheduler(): void {
   void tick();
   setInterval(tick, POLL_SECONDS * 1000);
   console.log(`[scheduler] polling every ${POLL_SECONDS}s`);
+  startTelegramPolling((q) => handleTap(q));
 }

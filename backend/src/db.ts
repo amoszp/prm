@@ -54,6 +54,18 @@ db.exec(`
   );
 `);
 
+// One-off extra alerts from Telegram's "Remind me tomorrow" button. Kept out
+// of the reminder record so a tap never changes what the app shows.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS extra_alerts (
+    user_id INTEGER NOT NULL,
+    reminder_id TEXT NOT NULL,
+    fire_at TEXT NOT NULL,
+    sent_at TEXT,
+    PRIMARY KEY (user_id, reminder_id, fire_at)
+  );
+`);
+
 interface RecordRow {
   data: string;
 }
@@ -144,6 +156,31 @@ export function markAlertSent(reminderId: string, key: string): void {
     reminderId,
     key,
     new Date().toISOString(),
+  );
+}
+
+export function addExtraAlert(userId: number, reminderId: string, fireAtIso: string): void {
+  db.prepare('INSERT OR IGNORE INTO extra_alerts (user_id, reminder_id, fire_at, sent_at) VALUES (?, ?, ?, NULL)').run(
+    userId,
+    reminderId,
+    fireAtIso,
+  );
+}
+
+/** Extra alerts that are due and not sent yet, for one account. */
+export function dueExtraAlerts(userId: number, nowIso: string): { reminderId: string; fireAt: string }[] {
+  const rows = db
+    .prepare('SELECT reminder_id, fire_at FROM extra_alerts WHERE user_id = ? AND sent_at IS NULL AND fire_at <= ? ORDER BY fire_at ASC')
+    .all(userId, nowIso) as unknown as { reminder_id: string; fire_at: string }[];
+  return rows.map((r) => ({ reminderId: r.reminder_id, fireAt: r.fire_at }));
+}
+
+export function markExtraAlertSent(userId: number, reminderId: string, fireAtIso: string): void {
+  db.prepare('UPDATE extra_alerts SET sent_at = ? WHERE user_id = ? AND reminder_id = ? AND fire_at = ?').run(
+    new Date().toISOString(),
+    userId,
+    reminderId,
+    fireAtIso,
   );
 }
 
